@@ -30,12 +30,13 @@ async function seed() {
 
   const orgName = 'Global Risk Corp';
 
-  // 1. Create Default Analyst User
+  // 1. Create or Force Update Default Analyst User Password
   const analystEmail = 'analyst@brandtrace.local';
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash('Analyst@1234', salt);
+
   let analyst = await User.findOne({ email: analystEmail });
   if (!analyst) {
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash('Analyst@1234', salt);
     analyst = await User.create({
       name: 'Sarah Connor (Security Analyst)',
       email: analystEmail,
@@ -45,7 +46,9 @@ async function seed() {
     });
     console.log(`✓ Created Default User: ${analystEmail} / Analyst@1234`);
   } else {
-    console.log(`ℹ User ${analystEmail} already exists.`);
+    analyst.passwordHash = passwordHash;
+    await analyst.save();
+    console.log(`✓ Updated password for existing user: ${analystEmail} / Analyst@1234`);
   }
 
   // 2. Load and Seed Brands
@@ -95,7 +98,7 @@ async function seed() {
     }
   }
 
-  // 4. Run Initial Scans for the brands to generate full realistic candidates, exclusions, and detections
+  // 4. Run Initial Scans
   console.log('\n--- Running Initial Automated Scans ---');
   for (const brand of Object.values(brandMap)) {
     console.log(`Executing scan for ${brand.name}...`);
@@ -112,7 +115,7 @@ async function seed() {
     console.log(`✓ Scan finished for ${brand.name}: ${scan.threatsFound} threats detected, ${scan.excludedCount} excluded official assets.`);
   }
 
-  // 5. Add a simulated historical failed scan to satisfy Section 11 requirement
+  // 5. Historical failed scan scenario
   const primaryBrand = Object.values(brandMap)[0];
   const failedScan = await Scan.findOne({ brandId: primaryBrand._id, status: 'Failed' });
   if (!failedScan) {
@@ -132,14 +135,13 @@ async function seed() {
     console.log('✓ Seeded historical failed scan scenario.');
   }
 
-  // 6. Enrich some detections with realistic analyst workflows (Under Review, Suspected Impersonation, False Positive, Resolved)
+  // 6. Enrich analyst investigation history
   console.log('\n--- Enriching Analyst Investigation History ---');
   const detections = await Detection.find({ organization: orgName }).populate('candidateId');
   for (const d of detections) {
     const c = d.candidateId;
     if (!c) continue;
 
-    // Seed a False Positive example (e.g. legitimate unrelated business)
     if (c.usernameOrAppName.includes('Apex Mountain') || c.usernameOrAppName.includes('Nova Star')) {
       d.status = 'False Positive';
       d.falsePositiveReason = 'Confirmed legitimate unrelated commercial business. Outdoor gear manufacturer operating since 2012 with trademark registration.';
@@ -158,7 +160,6 @@ async function seed() {
       console.log(`  ✓ Annotated False Positive: ${c.usernameOrAppName}`);
     }
 
-    // Seed a Confirmed Suspected Impersonation (Critical threat)
     if (d.riskCategory === 'Critical' && d.status === 'New') {
       d.status = 'Suspected Impersonation';
       d.assignedAnalyst = analyst.name;

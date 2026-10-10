@@ -2,72 +2,42 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import rateLimit from 'express-rate-limit';
 
-import { ENV } from './config/env.js';
+import authRoutes from './routes/auth.routes.js';
+import brandRoutes from './routes/brand.routes.js';
+import assetRoutes from './routes/asset.routes.js';
+import candidateRoutes from './routes/candidate.routes.js';
+import scanRoutes from './routes/scan.routes.js';
+import detectionRoutes from './routes/detection.routes.js';
+import reportRoutes from './routes/report.routes.js';
+import systemRoutes from './routes/system.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { apiLimiter } from './middleware/rateLimiter.js';
-
-import authRoutes from './routes/authRoutes.js';
-import brandRoutes from './routes/brandRoutes.js';
-import assetRoutes from './routes/assetRoutes.js';
-import scanRoutes from './routes/scanRoutes.js';
-import candidateRoutes from './routes/candidateRoutes.js';
-import detectionRoutes from './routes/detectionRoutes.js';
-import reportRoutes from './routes/reportRoutes.js';
-import systemRoutes from './routes/systemRoutes.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Security Headers
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+// Render reverse proxy warning raakunda deenini 1st line ga enable cheyyali:
+app.set('trust proxy', 1);
 
-// CORS Configuration
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, postman) or localhost origins
-    if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
-      return callback(null, true);
-    }
-    return callback(null, true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Security & Middlewares
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Request Logging
-if (ENV.NODE_ENV !== 'test') {
-  app.use(morgan('dev'));
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined'));
 }
 
-// Body parsers
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Static file serving for uploads
-app.use('/uploads', express.static(ENV.UPLOAD_DIR));
-
 // Rate Limiter
-app.use('/api', apiLimiter);
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { message: 'Too many requests from this IP, please try again later.' }
+});
+app.use('/api/', limiter);
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/brands', brandRoutes);
-app.use('/api/assets', assetRoutes);
-app.use('/api/scans', scanRoutes);
-app.use('/api/candidates', candidateRoutes);
-app.use('/api/detections', detectionRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api', systemRoutes);
-
-// Root route
+// Root Health Route
 app.get('/', (req, res) => {
   res.json({
     app: 'BRANDTRACE API',
@@ -77,7 +47,17 @@ app.get('/', (req, res) => {
   });
 });
 
-// Centralized error handler
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/brands', brandRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/candidates', candidateRoutes);
+app.use('/api/scans', scanRoutes);
+app.use('/api/detections', detectionRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api', systemRoutes);
+
+// Error Handling
 app.use(errorHandler);
 
 export default app;
