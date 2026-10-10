@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// Render URL nunchi vachina VITE_API_URL ni dynamic ga set chesthundi.
-// Chivarana trailing slashes unte theesi, /api path ni neat ga tagilisthundi.
+// Vite env URL check chesi, slash format set chesthundi
 const rawApiUrl = import.meta.env.VITE_API_URL;
 const API_BASE = rawApiUrl 
   ? `${rawApiUrl.replace(/\/+$/, '')}${rawApiUrl.endsWith('/api') ? '' : '/api'}` 
@@ -14,16 +13,28 @@ const api = axios.create({
   }
 });
 
+// Request Interceptor: Attach Token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('brandtrace_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // FormData pampinappudu default application/json header theeseyali
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
   return config;
 }, (error) => Promise.reject(error));
 
+// Response Interceptor: Handle Data & Errors
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    // CSV blobs download kosam full response ni allow chesthundi
+    if (response.config.responseType === 'blob') {
+      return response.data;
+    }
+    return response.data;
+  },
   (error) => {
     if (error.response && error.response.status === 401) {
       if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
@@ -32,7 +43,7 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    const message = error.response?.data?.message || (error.response?.status === 500 ? 'Cannot connect to backend server. Make sure the backend API is running.' : error.message) || 'An unexpected error occurred.';
+    const message = error.response?.data?.message || (error.response?.status === 500 ? 'Backend server error or cannot connect to API.' : error.message) || 'An unexpected error occurred.';
     return Promise.reject(new Error(message));
   }
 );
@@ -46,12 +57,8 @@ export const authService = {
 export const brandService = {
   getAll: (params) => api.get('/brands', { params }),
   getById: (id) => api.get(`/brands/${id}`),
-  create: (formData) => api.post('/brands', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  update: (id, formData) => api.put(`/brands/${id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  create: (formData) => api.post('/brands', formData),
+  update: (id, formData) => api.put(`/brands/${id}`, formData),
   archive: (id) => api.delete(`/brands/${id}`)
 };
 
