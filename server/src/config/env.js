@@ -9,9 +9,12 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+
 export const ENV = {
   PORT: process.env.PORT || 5000,
-  MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/brandtrace',
+  MONGODB_URI: mongoUri || (isProduction ? undefined : 'mongodb://localhost:27017/brandtrace'),
   JWT_SECRET: process.env.JWT_SECRET || 'brandtrace-dev-secret-key-32chars-min!',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   DETECTION_SERVICE_URL: process.env.DETECTION_SERVICE_URL || 'http://127.0.0.1:8001',
