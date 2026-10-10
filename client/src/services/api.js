@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+// Render URL nunchi vachina VITE_API_URL ni dynamic ga set chesthundi.
+// Chivarana trailing slashes unte theesi, /api path ni neat ga tagilisthundi.
+const rawApiUrl = import.meta.env.VITE_API_URL;
+const API_BASE = rawApiUrl 
+  ? `${rawApiUrl.replace(/\/+$/, '')}${rawApiUrl.endsWith('/api') ? '' : '/api'}` 
+  : '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -25,7 +32,7 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    const message = error.response?.data?.message || (error.response?.status === 500 ? 'Cannot connect to backend server. Make sure the backend API is running on port 5000 (cd server && npm run dev).' : error.message) || 'An unexpected error occurred.';
+    const message = error.response?.data?.message || (error.response?.status === 500 ? 'Cannot connect to backend server. Make sure the backend API is running.' : error.message) || 'An unexpected error occurred.';
     return Promise.reject(new Error(message));
   }
 );
