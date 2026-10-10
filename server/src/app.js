@@ -4,20 +4,19 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 
-import authRoutes from './routes/auth.routes.js';
-import brandRoutes from './routes/brand.routes.js';
-import assetRoutes from './routes/asset.routes.js';
-import candidateRoutes from './routes/candidate.routes.js';
-import scanRoutes from './routes/scan.routes.js';
-import detectionRoutes from './routes/detection.routes.js';
-import reportRoutes from './routes/report.routes.js';
-import systemRoutes from './routes/system.routes.js';
+import authRoutes from './routes/authRoutes.js';
+import brandRoutes from './routes/brandRoutes.js';
+import assetRoutes from './routes/assetRoutes.js';
+import candidateRoutes from './routes/candidateRoutes.js';
+import scanRoutes from './routes/scanRoutes.js';
+import detectionRoutes from './routes/detectionRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+import systemRoutes from './routes/systemRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
-app.set('trust proxy', 1);
 
-// Render reverse proxy warning raakunda deenini 1st line ga enable cheyyali:
+// Render reverse proxy warning raakunda:
 app.set('trust proxy', 1);
 
 // Security & Middlewares
