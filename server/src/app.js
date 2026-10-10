@@ -15,6 +15,7 @@ import systemRoutes from './routes/system.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Render reverse proxy warning raakunda deenini 1st line ga enable cheyyali:
 app.set('trust proxy', 1);
